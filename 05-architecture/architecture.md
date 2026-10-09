@@ -68,3 +68,16 @@ Final pass: the architecture was compared against the data model and against the
 | Each rule has a mark (engine, domain-only or pending) | OK | §4 |
 | Value objects `Money` and `Quantity` have no table | OK | §2, D-07 |
 | The report has no table and is computed through a read port | OK | §1, §6.1 (Q9) |
+
+
+### 6.2 Traceability to the other documents
+
+| Architecture decision | Requirement that needs it | Domain rule | Source |
+|---|---|---|---|
+| Stock check in the engine (`ck_product_stock_non_negative`) | NFR-01, US-09 | `Product.Withdraw` | §2.2 |
+| Optimistic concurrency with `xmin` | NFR-02 | Stock withdrawal is atomic with the sale line | §3, §6.1 (Q3) |
+| Frozen name, price and category in `SaleItem` | NFR-04, US-11 | Frozen values on `SaleItem` | §2.4, §11.1 |
+| Soft delete (`deleted_at`) | US-06, NFR-12 | Never physically deleted | §2.2, §7.1 |
+| Hash port | US-01, NFR-08 | The domain never sees the plain password | §2.5, §9.2 |
+| Read port for the report | US-11, NFR-09 | Report is not persisted | §1, §6.2 |
+| Single currency, no audit columns | Out of scope in context and product | Closed decisions | §3, §8 |
