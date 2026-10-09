@@ -1,59 +1,59 @@
-# Arquitectura — Simple Stock Flow
+# Architecture — Simple Stock Flow
 
-> **Fuente única:** `spec/data-model.md`. Las citas §x.y remiten a ese documento.
-> Lo que no sale del modelo está marcado como **Supuesto**.
+> **Single source:** `spec/data-model.md`. Citations such as §x.y refer to that document.
+> Anything that does not come from the model is marked as **Assumption**.
 
-## 1. Estilo arquitectónico
+## 1. Architectural style
 
-**Arquitectura hexagonal (puertos y adaptadores).** El dominio no conoce la base de datos ni los servicios externos; habla con ellos a través de puertos.
+**Hexagonal architecture (ports and adapters).** The domain knows nothing about the database or external services; it talks to them through ports.
 
-Evidencia en el modelo: el «adaptador de persistencia» traduce entre clases y tablas (§0), el «puerto de hash» produce el hash de contraseña (§2.5, §9.2) y un «puerto de lectura» calcula el reporte (§1, §6.1).
+Evidence in the model: the "persistence adapter" translates between classes and tables (§0), the "hash port" produces the password hash (§2.5, §9.2), and a "read port" computes the report (§1, §6.1).
 
-## 2. Piezas del sistema
+## 2. System components
 
-| Pieza | Tipo | Responsabilidad | Fuente |
+| Component | Type | Responsibility | Source |
 |---|---|---|---|
-| `Category` | Entidad de referencia | Cinco categorías fijas, solo lectura, sin ciclo de vida | §2.1, §9.1 |
-| `Product` | Raíz de agregado (catálogo) | Nombre, precio, stock, categoría, imagen; baja lógica | §2.2 |
-| `Sale` | Raíz de agregado (ventas) | Venta inmutable: quién, cuándo y qué | §2.3 |
-| `SaleItem` | Entidad interna de `Sale` | Línea con producto, cantidad y precio congelado | §2.4 |
-| `User` | Raíz de agregado (identidad) | Usuario, rol (`admin` / `seller`) y hash de clave | §2.5 |
-| `Money`, `Quantity` | Objetos de valor | Sin identidad ni tabla; viven en la fila de su dueño | §2 |
-| Puerto de hash | Puerto de salida | El dominio nunca ve la clave en claro | §2.5, §9.2 |
-| Puerto de lectura de reporte | Puerto de salida | Agregación por producto calculada en el motor | §1, §6.1 (Q9) |
-| Adaptador de persistencia | Adaptador | Mapea clases a tablas; colecciones C# en plural, tablas en singular | §0 |
-| Almacenamiento de imágenes | Sistema externo | Guarda el binario; el modelo solo guarda una clave opaca | §1, §7.1 |
-| Arranque de la aplicación | Proceso | Crea el administrador inicial con credenciales de entorno | §9.2 |
+| `Category` | Reference entity | Five fixed categories, read-only, no lifecycle | §2.1, §9.1 |
+| `Product` | Aggregate root (catalog) | Name, price, stock, category, image; soft delete | §2.2 |
+| `Sale` | Aggregate root (sales) | Immutable sale: who, when and what | §2.3 |
+| `SaleItem` | Entity internal to `Sale` | Line with product, quantity and frozen price | §2.4 |
+| `User` | Aggregate root (identity) | User, role (`admin` / `seller`) and password hash | §2.5 |
+| `Money`, `Quantity` | Value objects | No identity or table; they live in their owner's row | §2 |
+| Hash port | Outbound port | The domain never sees the plain-text password | §2.5, §9.2 |
+| Report read port | Outbound port | Per-product aggregation computed in the engine | §1, §6.1 (Q9) |
+| Persistence adapter | Adapter | Maps classes to tables; C# collections are plural, tables singular | §0 |
+| Image storage | External system | Stores the binary; the model keeps only an opaque key | §1, §7.1 |
+| Application startup | Process | Creates the initial administrator from environment credentials | §9.2 |
 
-## 3. Dónde vive cada regla
+## 3. Where each rule lives
 
-El modelo clasifica cada regla en tres marcas (§ «Cómo se lee este documento», §4):
+The model classifies every rule with one of three marks (section "How to read this document", §4):
 
-- **motor** (la garantiza Postgres): `stock >= 0` (`ck_product_stock_non_negative`), unicidad de `category.name` y `user.username`, claves foráneas FK-1, FK-2 y FK-3, único `(sale_id, product_id)`.
-- **solo dominio** (la garantiza C#): `price > 0`, `quantity > 0`, rol válido, nombre de usuario en minúsculas, venta con al menos una línea, retirar más stock del disponible.
-- **pendiente**: `sale.sold_by_user_id` y FK-4 (T-12), índices de búsqueda (T-13), los `CHECK` que bajan al motor (T-20).
+- **engine** (guaranteed by Postgres): `stock >= 0` (`ck_product_stock_non_negative`), uniqueness of `category.name` and `user.username`, foreign keys FK-1, FK-2 and FK-3, unique `(sale_id, product_id)`.
+- **domain-only** (guaranteed by C# code): `price > 0`, `quantity > 0`, valid role, lowercase username, a sale with at least one line, withdrawing more stock than available.
+- **pending**: `sale.sold_by_user_id` and FK-4 (T-12), search indexes (T-13), `CHECK` constraints to be moved into the engine (T-20).
 
-**Implicación:** lo que solo vive en el dominio protege a la aplicación pero no a los datos; un `INSERT` manual lo salta (§ «Cómo se lee este documento»).
+**Implication:** a rule that lives only in the domain protects the application but not the data; a manual `INSERT` bypasses it (section "How to read this document").
 
-## 4. Decisiones estructurales implicadas por el modelo
+## 4. Structural decisions implied by the model
 
-| Decisión | Razón | Fuente |
+| Decision | Reason | Source |
 |---|---|---|
-| El esquema lo poseen las migraciones | Todo el DDL pasa por un solo camino | §3.2 |
-| Concurrencia optimista con `xmin` | Evita sobreventa al descontar stock | §3 (nota `xmin`), §2.2 |
-| Baja lógica de productos (`deleted_at`) | Las líneas de venta y el reporte dependen de la fila | §2.2, §7.1 |
-| Nombre, precio y categoría congelados en `SaleItem` | Reprecificar o renombrar no reescribe el histórico | §1, §2.4 |
-| Total y subtotal se calculan, no se almacenan | Evita dos fuentes de verdad | §1 |
-| Reporte no persistido | Se calcula en el motor sobre un rango de fechas | §1, §6.2 |
-| Reporte agrupa por la categoría congelada | Un reporte cerrado no debe cambiar | §11.1 |
-| Sistema monomoneda, sin columnas de moneda | Decisión cerrada | §3 |
-| Sin columnas de auditoría | No hay requisito | §8 |
+| The schema is owned by migrations | All DDL goes through a single path | §3.2 |
+| Optimistic concurrency with `xmin` | Prevents overselling when stock is decremented | §3 (`xmin`), §2.2 |
+| Soft delete of products (`deleted_at`) | Sale lines and the report depend on the row | §2.2, §7.1 |
+| Name, price and category frozen in `SaleItem` | Repricing or renaming does not rewrite history | §1, §2.4 |
+| Total and subtotal are computed, not stored | Avoids two sources of truth | §1 |
+| Report is not persisted | Computed in the engine over a date range | §1, §6.2 |
+| Report groups by the frozen category | A closed report must never change | §11.1 |
+| Single-currency system, no currency columns | Closed decision | §3 |
+| No audit columns | There is no requirement for them | §8 |
 
-## 5. Supuestos
+## 5. Assumptions
 
-- **Supuesto:** el sistema se expone mediante una API; el modelo la menciona pero su contrato queda fuera de alcance (§12).
-- **Supuesto:** la implementación usa C# con un ORM (el modelo cita `Sale.Items`, `DbSet<Product>` y a EF), sobre PostgreSQL 16 (§0, §3.2).
+- **Assumption:** the system is exposed through an API; the model mentions it but its contract is out of scope (§12).
+- **Assumption:** the implementation uses C# with an ORM (the model cites `Sale.Items`, `DbSet<Product>` and EF) on PostgreSQL 16 (§0, §3.2).
 
-## 6. Verificación de coherencia
+## 6. Consistency check
 
-*(Pendiente: se completa al terminar el paso de cierre, comparando con requisitos, producto, dominio y contexto.)*
+*(Pending: completed in the final pass, comparing against requirements, product, domain and context.)*
