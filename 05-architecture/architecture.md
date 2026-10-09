@@ -56,4 +56,15 @@ The model classifies every rule with one of three marks (section "How to read th
 
 ## 6. Consistency check
 
-*(Pending: completed in the final pass, comparing against requirements, product, domain and context.)*
+Final pass: the architecture was compared against the data model and against the requirements, product, domain and context documents.
+
+### 6.1 Coverage of the model
+
+| Check | Result | Source |
+|---|---|---|
+| The five entities (`Category`, `Product`, `Sale`, `SaleItem`, `User`) appear as components | OK | §2, §3 |
+| The three aggregate roots are `Product`, `Sale` and `User`; `Category` is reference data | OK | §2.1 to §2.5 |
+| The four foreign keys are covered: FK-1, FK-2 and FK-3 in the engine, FK-4 pending (T-12) | OK | §5 |
+| Each rule has a mark (engine, domain-only or pending) | OK | §4 |
+| Value objects `Money` and `Quantity` have no table | OK | §2, D-07 |
+| The report has no table and is computed through a read port | OK | §1, §6.1 (Q9) |
