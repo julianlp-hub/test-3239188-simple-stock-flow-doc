@@ -109,3 +109,39 @@ The only N:M relationship is `sale` ↔ `product`, resolved by `sale_item`, whic
 | `StockWithdrawn` | Adding a line to a sale | `Product.Withdraw` (§2.2, §2.3) |
 | `StockReplenished` | Adding stock | `Product.Restock` (§2.2) |
 | `SaleRegistered` | Confirming a sale | `Sale.EnsureConfirmable` (§2.3) |
+
+
+## 6. Glossary
+
+| Business term | Functional definition | Technical home |
+|---|---|---|
+| Product (*Producto*) | Catalog item: name, price, stock, category and optional image | `Product` · table `product` |
+| Category (*Categoría*) | One of five fixed classifications | `Category` · table `category` |
+| Price (*Precio*) | Current monetary value of the product; strictly positive | `Money` · `product.price` |
+| Stock | Units available; never negative | `product.stock` |
+| Product image (*Imagen*) | Opaque key to an external binary; `NULL` when absent | `product.image_key` |
+| Sale (*Venta*) | Consummated, immutable commercial fact: who, when and what | `Sale` · table `sale` |
+| Sale line (*Línea de venta*) | Sale row: product, quantity and frozen price | `SaleItem` · table `sale_item` |
+| Quantity (*Cantidad*) | Units sold in a line; strictly positive | `Quantity` · `sale_item.quantity` |
+| Sale total (*Total*) | Sum of subtotals; computed, not stored | `Sale.Total` · no column |
+| Line subtotal (*Subtotal*) | Unit price times quantity; computed, not stored | `SaleItem.Subtotal` · no column |
+| User (*Usuario*) | Internal operator who logs in and registers sales; there is no customer | `User` · table `user` |
+| Role (*Rol*) | `admin` or `seller` | `user.role` |
+| Password hash (*Hash de clave*) | Irreversible fingerprint of the password | `user.password_hash` |
+| Date range (*Rango de fechas*) | Time window for the report | Application-layer value object |
+| Sales report (*Reporte de ventas*) | Per-product aggregation over a range; not persisted | Read model |
+| Frozen (*Congelado*) | A copy of a value taken at sale time that does not follow the catalog | `sale_item` columns |
+
+## 7. Closed decisions that bound the domain
+
+- Single currency, no currency column (§3, D-05).
+- No audit columns (§8).
+- No per-seller report breakdown (DP-02, §7.1).
+- No extra product attributes (DP-03, §1).
+- Nobody grants `admin` at runtime (DP-04, §11 H-3).
+
+## 8. Open points
+
+- **Possible conflict:** `spec.md` CA-06.1 says "one row per product", but §11.1 yields more than one row when a product was recategorized.
+- **Inconsistency noticed in the model:** §3 lists `category_name` among `product` columns, but it belongs to `sale_item`.
+- **Column count:** §3 says 22 columns, but the table lists 21 plus `xmin`, which is a system column (§3, §10.1).
