@@ -1,70 +1,76 @@
-# Producto — Simple Stock Flow
+# Product — Simple Stock Flow
 
-> **Fuente única:** `spec/data-model.md`. Las citas §x.y remiten a ese documento.
-> Lo que no sale del modelo está marcado como **Supuesto**.
+> **Single source:** `spec/data-model.md`. Citations such as §x.y refer to that document.
+> Anything that does not come from the model is marked as **Assumption**.
 
-## 1. Problema que resuelve
+## 1. Problem it solves
 
-Un negocio que vende productos necesita saber **cuántas unidades tiene**, **qué vendió, quién lo vendió y a qué precio**, y poder **sumar ventas por producto en un período**. Sin un sistema, el stock y las ventas se desfasan: se vende lo que ya no hay, se pierde el precio al que se vendió y los reportes cambian cuando cambia el catálogo.
+A business that sells products needs to know **how many units it has**, **what was sold, by whom and at what price**, and be able to **add up sales per product over a period**. Without a system, stock and sales drift apart: items that no longer exist are sold, the selling price is lost, and reports change when the catalog changes.
 
-El modelo de datos muestra qué problemas están resueltos por diseño:
+The data model shows which problems are solved by design:
 
-| Problema del negocio | Cómo lo resuelve el modelo | Fuente |
+| Business problem | How the model solves it | Source |
 |---|---|---|
-| Vender más de lo que hay | `stock >= 0` garantizado por el motor y retiro de stock atómico con la línea de venta | §2.2, §2.3 |
-| Perder el precio de venta si el producto cambia | Nombre, precio y categoría quedan congelados en la línea de venta | §1, §2.4 |
-| Reportes que cambian con el tiempo | El reporte agrupa por el valor congelado | §11.1 |
-| Perder historial al «borrar» un producto | Baja lógica, nunca borrado físico | §2.2, §7.1 |
-| No saber quién vendió | Cada venta registra al operador que la hizo | §2.3 |
+| Selling more than what is in stock | `stock >= 0` enforced by the engine and stock withdrawal that is atomic with the sale line | §2.2, §2.3 |
+| Losing the selling price when a product changes | Name, price and category are frozen in the sale line | §1, §2.4 |
+| Reports that change over time | The report groups by the frozen value | §11.1 |
+| Losing history when a product is "deleted" | Soft delete, never physical deletion | §2.2, §7.1 |
+| Not knowing who sold | Each sale records the operator who made it | §2.3 |
 
-**Supuesto:** el negocio es un comercio pequeño de venta presencial de artículos de ferretería y suministros. El modelo no lo dice de forma explícita, pero lo sugieren las cinco categorías sembradas (General, Herramientas, Electricidad, Fontanería, Pinturas, §9.1) y la ausencia de clientes y pagos (§1, §7).
+**Assumption:** the business is a small, in-person retail shop selling hardware and supplies. The model does not say so explicitly, but it is suggested by the five seeded categories (General, Tools, Electricity, Plumbing, Paint, §9.1) and by the absence of customers and payments (§1, §7).
 
-## 2. Visión del producto
+## 2. Product vision
 
-> *Para* pequeños negocios que venden artículos de un catálogo fijo, *Simple Stock Flow* es un sistema de inventario y ventas que mantiene el stock correcto y conserva un historial de ventas que no cambia, *a diferencia de* llevar el control a mano o en hojas sueltas.
+> *For* small businesses that sell items from a fixed catalog, *Simple Stock Flow* is an inventory and sales system that keeps stock correct and preserves a sales history that does not change, *unlike* tracking everything by hand or in loose spreadsheets.
 
-Deja la frase de visión tal como está.
+## 3. Users
 
-## 3. Usuarios
-
-| Usuario | Qué necesita | Fuente |
+| User | What they need | Source |
 |---|---|---|
-| Vendedor (`seller`) | Registrar ventas y consultar productos | §2.5 |
-| Administrador (`admin`) | Dar de alta vendedores, mantener el catálogo y ver reportes | §2.5, §11 (H-3) |
+| Seller (`seller`) | Register sales and look up products | §2.5 |
+| Administrator (`admin`) | Create sellers, maintain the catalog and view reports | §2.5, §11 (H-3) |
 
-No hay compradores como usuarios del sistema (§1).
+Buyers are not users of the system (§1).
 
-## 4. Propuesta de valor
+## 4. Value proposition
 
-1. **Stock confiable:** no baja de cero y se descuenta junto con la venta (§2.2, §2.3).
-2. **Historial estable:** las ventas son inmutables y guardan copia de lo que se vendió (§2.3, §2.4).
-3. **Reporte por producto en un rango de fechas,** calculado en el motor (§1, §6.1 Q9).
-4. **Privacidad mínima:** solo se guarda al operador, no al cliente final (§7).
+1. **Reliable stock:** it never drops below zero and is decremented together with the sale (§2.2, §2.3).
+2. **Stable history:** sales are immutable and keep a copy of what was sold (§2.3, §2.4).
+3. **Per-product report over a date range,** computed in the engine (§1, §6.1 Q9).
+4. **Minimal privacy footprint:** only the operator is stored, not the end customer (§7).
 
-## 5. Qué es y qué no es el producto
+## 5. What the product is and is not
 
-**Es:** catálogo de productos con cinco categorías fijas, registro de ventas, usuarios internos con dos roles y reporte por producto.
+**It is:** a product catalog with five fixed categories, sales registration, internal users with two roles, and a per-product report.
 
-**No es** (decisiones cerradas en el modelo):
-- Un sistema de clientes o de pagos (§1, §7).
-- Un sistema multimoneda (§3).
-- Un sistema con auditoría de cambios del catálogo (§8).
-- Un gestor de categorías (§2.1, §4.1).
-- Un sistema con atributos extra de producto, como descripción o SKU (§1, DP-03).
-- Un reporte por vendedor (§7.1, DP-02).
+**It is not** (decisions closed in the model):
+- A customer or payment system (§1, §7).
+- A multi-currency system (§3).
+- A system with change auditing of the catalog (§8).
+- A category manager (§2.1, §4.1).
+- A system with extra product attributes such as description or SKU (§1, DP-03).
+- A per-seller report (§7.1, DP-02).
 
-## 6. Criterios de éxito
+## 6. Success criteria
 
-**Supuesto:** el modelo no define métricas de éxito. Estas se derivan de sus reglas:
+**Assumption:** the model defines no success metrics. These are derived from its rules:
 
-- Ninguna operación deja un producto con stock negativo.
-- Un reporte de un rango cerrado devuelve siempre el mismo resultado.
-- Ninguna venta queda sin al menos una línea.
+- No operation leaves a product with negative stock.
+- A report for a closed range always returns the same result.
+- No sale exists without at least one line.
+- A seller can register a multi-line sale in a single operation, and if any line exceeds the available stock the operation fails without leaving stock negative (§2.2, §2.3).
 
-- Un vendedor puede registrar una venta de varias líneas en una sola operación, y si alguna línea supera el stock disponible, la operación falla sin dejar el stock en negativo (§2.2, §2.3). **Supuesto:** el modelo no define este criterio como métrica; se deriva de sus reglas.
+## 7. Known risks and debts in the model
 
-## 7. Riesgos y deudas conocidas del modelo
+- Several rules live only in the domain (`price > 0`, `quantity > 0`, valid role); a manual `INSERT` bypasses them (§4, T-20).
+- Sale authorship is plain text, with no foreign key to `user`, until T-12 (§5, FK-4).
+- `spec.md` CA-06.1 ("one row per product") conflicts with the decision in §11.1 (there may be more than one row per product after a recategorization).
 
-- Varias reglas solo viven en el dominio y no en el motor (`price > 0`, `quantity > 0`, rol válido); un `INSERT` manual las salta (§4, T-20).
-- La autoría de la venta es texto, sin clave foránea a `user`, hasta T-12 (§5, FK-4).
-- `spec.md` CA-06.1 («una fila por producto») choca con la decisión de §11.1 (puede haber más de una fila por producto si hubo recategorización).
+## 8. Observations on model fit
+
+**Assumption / team observation:** when contrasting the model with an electric-motorbike shop known to the team, two limits appear that the model declares deliberately:
+
+- Categories are five, fixed and cannot be created (§2.1, §4.1), so there is no dedicated category for vehicles.
+- A product has only name, price, stock, category and image (§1, DP-03), with no serial or chassis number.
+
+These are closed decisions of the model, not errors; they are noted so that anyone adopting the system in another kind of business knows where it does not fit.
