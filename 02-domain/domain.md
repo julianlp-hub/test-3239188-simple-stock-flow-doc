@@ -74,3 +74,38 @@ Its constructor is `internal`: only `Sale.AddItem` can create a line (§2.4).
 | Password hash required, non-empty | `User` constructor | domain-only (`NOT NULL` is in the engine) |
 | `role` in (`admin`, `seller`) | `Roles.IsValid` | domain-only (T-20) |
 | The domain never sees the plain-text password | A hash port produces the hash (D-09) | By design |
+
+
+## 3. Value objects
+
+| Value object | Rule | Source |
+|---|---|---|
+| `Money` | Rounds to 2 decimals with `MidpointRounding.AwayFromZero`; rejects negatives but **accepts zero**; matches the `numeric(18,2)` column | §2.2 |
+| `Quantity` | Strictly positive | §1, §2.4 |
+| Date range | The end cannot precede the start; application-layer object, no table | §1 |
+
+Note: `price > 0` is guarded only by `Product.ChangePrice`, because `Money` allows zero (§2.2).
+
+## 4. Relationships
+
+| From | To | Cardinality | Nature | Source |
+|---|---|---|---|---|
+| `category` | `product` | 1:N | Cross-aggregate, by root identity (FK-1, `RESTRICT`) | §5 |
+| `sale` | `sale_item` | 1:N | Internal composition (FK-2, `CASCADE`) | §5 |
+| `sale_item` | `product` | N:1 | Cross-aggregate, by root identity (FK-3, `RESTRICT`) | §5 |
+| `sale` | `user` | N:1 | Cross-aggregate, by identity (FK-4, `RESTRICT`, **pending T-12**) | §5 |
+
+The only N:M relationship is `sale` ↔ `product`, resolved by `sale_item`, which carries its own data (`quantity`, `unit_price`, `product_name`, `category_name`) (§5).
+
+## 5. Domain events
+
+**Assumption:** the model does not list events. The following are derived from its operations and are not stated in it.
+
+| Event (assumed) | Triggered by | Derived from |
+|---|---|---|
+| `ProductCreated` | Creating a product | `Product.Rename`, `SetCategory` (§2.2) |
+| `ProductPriceChanged` | Changing a product's price | `Product.ChangePrice` (§2.2) |
+| `ProductDeactivated` | Setting `deleted_at` | Soft delete (§2.2, §7.1) |
+| `StockWithdrawn` | Adding a line to a sale | `Product.Withdraw` (§2.2, §2.3) |
+| `StockReplenished` | Adding stock | `Product.Restock` (§2.2) |
+| `SaleRegistered` | Confirming a sale | `Sale.EnsureConfirmable` (§2.3) |
