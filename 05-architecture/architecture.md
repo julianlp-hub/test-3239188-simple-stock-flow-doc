@@ -81,3 +81,14 @@ Final pass: the architecture was compared against the data model and against the
 | Hash port | US-01, NFR-08 | The domain never sees the plain password | §2.5, §9.2 |
 | Read port for the report | US-11, NFR-09 | Report is not persisted | §1, §6.2 |
 | Single currency, no audit columns | Out of scope in context and product | Closed decisions | §3, §8 |
+
+
+### 6.3 Inconsistencies found in the model
+
+| # | Finding | Effect on this architecture | Source |
+|---|---|---|---|
+| 1 | §3 says 22 columns, but the table lists 21 plus `xmin`, a system column | None; `xmin` is documented as the concurrency token | §3, §10.1 |
+| 2 | §3 lists `category_name` among `product` columns, but it belongs to `sale_item` | Treated as a `sale_item` column | §2.4, §3 |
+| 3 | §10 is a snapshot of 2026-09-19; §13 records fixes of 2026-09-20 (`deleted_at`, `sale_id NOT NULL`, unique `(sale_id, product_id)`, FK-3) | Section 3 follows §13 as the latest state | §10, §13 |
+| 4 | `spec.md` CA-06.1 says "one row per product"; §11.1 can yield more than one | The report groups by the frozen category; the wording decision belongs to the owner | §11.1 |
+| 5 | The sale line table marks `category_name` as pending (T-11) in §3, but as engine in §2.4 | Treated as pending until confirmed | §2.4, §3 |
