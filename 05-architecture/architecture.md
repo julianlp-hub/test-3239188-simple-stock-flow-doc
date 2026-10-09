@@ -92,3 +92,8 @@ Final pass: the architecture was compared against the data model and against the
 | 3 | §10 is a snapshot of 2026-09-19; §13 records fixes of 2026-09-20 (`deleted_at`, `sale_id NOT NULL`, unique `(sale_id, product_id)`, FK-3) | Section 3 follows §13 as the latest state | §10, §13 |
 | 4 | `spec.md` CA-06.1 says "one row per product"; §11.1 can yield more than one | The report groups by the frozen category; the wording decision belongs to the owner | §11.1 |
 | 5 | The sale line table marks `category_name` as pending (T-11) in §3, but as engine in §2.4 | Treated as pending until confirmed | §2.4, §3 |
+
+
+### 6.4 Outcome
+
+The architecture is consistent with the data model and with the other four documents. The open items are not architecture decisions: T-12 (sale authorship foreign key), T-13 (indexes), T-20 (moving domain-only rules into the engine) and the CA-06.1 wording (§4, §5, §6.2, §11.1).
