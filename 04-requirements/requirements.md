@@ -1,56 +1,56 @@
-# Requisitos — Simple Stock Flow
+# Requirements — Simple Stock Flow
 
-> **Fuente única:** `spec/data-model.md`. Las citas §x.y y Qn remiten a ese documento.
-> Lo que no sale del modelo está marcado como **Supuesto**.
+> **Single source:** `spec/data-model.md`. Citations such as §x.y and Qn refer to that document.
+> Anything that does not come from the model is marked as **Assumption**.
 
-## 1. Actores
+## 1. Actors
 
-| Actor | Descripción | Fuente |
+| Actor | Description | Source |
 |---|---|---|
-| Administrador (`admin`) | Operador interno con privilegios altos | §1, §2.5 |
-| Vendedor (`seller`) | Operador interno que registra ventas | §1, §2.5 |
+| Administrator (`admin`) | Internal operator with high privileges | §1, §2.5 |
+| Seller (`seller`) | Internal operator who registers sales | §1, §2.5 |
 
-No existe actor «cliente» ni «comprador» (§1).
-**Supuesto:** qué puede hacer exactamente cada rol (el modelo solo dice que son dos y que el `admin` da de alta vendedores, §11 H-3).
+There is no "customer" or "buyer" actor (§1).
+**Assumption:** exactly what each role can do (the model only says there are two roles and that the `admin` creates sellers, §11 H-3).
 
-## 2. Historias de usuario
+## 2. User stories
 
-| ID | Historia | Reglas que la sustentan | Fuente |
+| ID | Story | Rules behind it | Source |
 |---|---|---|---|
-| HU-01 | Como operador, quiero iniciar sesión con mi usuario y contraseña para usar el sistema. | Usuario único, en minúsculas; la contraseña solo se verifica mediante el hash | §2.5, §6.1 (Q10) |
-| HU-02 | Como administrador, quiero dar de alta vendedores para que puedan registrar ventas. | El rol `admin` no se otorga en ejecución: lo provisiona el despliegue | §11 (H-3, DP-04) |
-| HU-03 | Como operador, quiero buscar productos por texto y categoría para encontrarlos rápido. | Solo productos activos, ordenados por nombre, con paginación | §6.1 (Q1) |
-| HU-04 | Como operador, quiero ver las categorías disponibles para clasificar productos. | Son cinco, fijas y de solo lectura | §2.1, §9.1 (Q4) |
-| HU-05 | Como operador, quiero crear y editar productos (nombre, precio, stock, categoría) para mantener el catálogo. | `price > 0`; nombre obligatorio y recortado; categoría obligatoria y existente | §2.2 |
-| HU-06 | Como operador, quiero dar de baja un producto sin perder su historial. | Baja lógica con `deleted_at`; nunca borrado físico | §2.2, §7.1 |
-| HU-07 | Como operador, quiero asociar una imagen a un producto. | Se guarda una clave opaca; sin imagen es `NULL`, nunca cadena vacía | §1, §2.2 |
-| HU-08 | Como vendedor, quiero registrar una venta con varias líneas (producto y cantidad). | Al menos una línea; un producto no se repite en la misma venta; `quantity > 0` | §2.3, §2.4 |
-| HU-09 | Como vendedor, quiero que el stock se descuente al agregar una línea y que no me deje vender más de lo disponible. | Descontar stock y añadir la línea es una sola operación; `stock >= 0` | §2.2, §2.3 |
-| HU-10 | Como operador, quiero consultar las ventas de un rango de fechas. | Orden por fecha descendente, con paginación | §6.1 (Q7) |
-| HU-11 | Como administrador, quiero un reporte de ventas por producto en un rango de fechas. | Agrupa por producto y por categoría congelada; el fin del rango no puede ser anterior al inicio | §1, §6.1 (Q9), §11.1 |
+| US-01 | As an operator, I want to log in with my username and password so I can use the system. | Unique, lowercase username; the password is only checked through the hash | §2.5, §6.1 (Q10) |
+| US-02 | As an administrator, I want to create sellers so they can register sales. | The `admin` role is not granted at runtime: deployment provisions it | §11 (H-3, DP-04) |
+| US-03 | As an operator, I want to search products by text and category so I can find them quickly. | Active products only, ordered by name, paginated | §6.1 (Q1) |
+| US-04 | As an operator, I want to see the available categories to classify products. | Five fixed, read-only categories | §2.1, §9.1 (Q4) |
+| US-05 | As an operator, I want to create and edit products (name, price, stock, category) to maintain the catalog. | `price > 0`; name required and trimmed; category required and existing | §2.2 |
+| US-06 | As an operator, I want to deactivate a product without losing its history. | Soft delete with `deleted_at`; never physically deleted | §2.2, §7.1 |
+| US-07 | As an operator, I want to attach an image to a product. | Only an opaque key is stored; no image means `NULL`, never an empty string | §1, §2.2 |
+| US-08 | As a seller, I want to register a sale with several lines (product and quantity). | At least one line; a product cannot repeat within a sale; `quantity > 0` | §2.3, §2.4 |
+| US-09 | As a seller, I want stock to be decremented when a line is added and to be blocked from selling more than what is available. | Withdrawing stock and adding the line is a single operation; `stock >= 0` | §2.2, §2.3 |
+| US-10 | As an operator, I want to list sales within a date range. | Ordered by date descending, paginated | §6.1 (Q7) |
+| US-11 | As an administrator, I want a per-product sales report for a date range. | Groups by product and frozen category; the end of the range cannot precede the start | §1, §6.1 (Q9), §11.1 |
 
-## 3. Requisitos no funcionales
+## 3. Non-functional requirements
 
-| ID | Categoría | Requisito | Fuente |
+| ID | Category | Requirement | Source |
 |---|---|---|---|
-| RNF-01 | Integridad | El stock nunca es negativo; lo garantiza el motor como última barrera | §2.2 (`ck_product_stock_non_negative`) |
-| RNF-02 | Concurrencia | Dos ventas simultáneas sobre el mismo producto no deben sobrevender; se usa `xmin` como testigo de concurrencia | §3 (`xmin`), §6.1 (Q3) |
-| RNF-03 | Inmutabilidad | Una venta registrada no se edita ni se borra; no existe operación que lo permita | §2.3, §7.1 |
-| RNF-04 | Trazabilidad histórica | La línea de venta guarda copia congelada de nombre, precio y categoría, para que el reporte de un período cerrado no cambie | §1, §2.4, §11.1 |
-| RNF-05 | Exactitud monetaria | Importes en `numeric(18,2)` y redondeo a 2 decimales (`AwayFromZero`); sistema monomoneda | §2.2, §3 |
-| RNF-06 | Cálculo | Total y subtotal se calculan, no se almacenan | §1 |
-| RNF-07 | Tiempo | Todas las marcas de tiempo son `timestamptz`; el servidor corre en UTC | §3 |
-| RNF-08 | Privacidad | El hash de contraseña nunca aparece en logs, respuestas ni errores, y nunca se indexa; el reporte no se desglosa por vendedor | §7, §7.1 (DP-02) |
-| RNF-09 | Rendimiento | La búsqueda (Q1), el listado de ventas (Q7) y el reporte (Q9) usan índices dedicados; el reporte se calcula en el motor | §6.1, §6.2 |
-| RNF-10 | Mantenibilidad | Todo el DDL se define mediante migraciones; el motor prevalece sobre el documento si hay contradicción | § «Rige bajo», §3.2 |
-| RNF-11 | Integridad referencial | Políticas `ON DELETE` definidas: FK-1, FK-3 y FK-4 en `RESTRICT`; FK-2 en `CASCADE` | §5 |
-| RNF-12 | Retención | Ventas y líneas se conservan indefinidamente; el único dato que se borra físicamente es el binario de imagen | §7.1 |
+| NFR-01 | Integrity | Stock is never negative; the engine enforces it as the last barrier | §2.2 (`ck_product_stock_non_negative`) |
+| NFR-02 | Concurrency | Simultaneous sales on the same product must not oversell; `xmin` is the concurrency token | §3 (`xmin`), §6.1 (Q3) |
+| NFR-03 | Immutability | A registered sale is neither edited nor deleted; no operation allows it | §2.3, §7.1 |
+| NFR-04 | Historical traceability | The sale line stores a frozen copy of name, price and category, so a closed period's report never changes | §1, §2.4, §11.1 |
+| NFR-05 | Monetary accuracy | Amounts in `numeric(18,2)` with rounding to 2 decimals (`AwayFromZero`); single currency | §2.2, §3 |
+| NFR-06 | Computation | Total and subtotal are computed, not stored | §1 |
+| NFR-07 | Time | All timestamps are `timestamptz`; the server runs in UTC | §3 |
+| NFR-08 | Privacy | The password hash never appears in logs, responses or errors and is never indexed; the report is not broken down by seller | §7, §7.1 (DP-02) |
+| NFR-09 | Performance | Search (Q1), sales listing (Q7) and the report (Q9) use dedicated indexes; the report is computed in the engine | §6.1, §6.2 |
+| NFR-10 | Maintainability | All DDL is defined through migrations; the engine prevails over the document if they contradict | Header "Rige bajo", §3.2 |
+| NFR-11 | Referential integrity | `ON DELETE` policies defined: FK-1, FK-3 and FK-4 are `RESTRICT`; FK-2 is `CASCADE` | §5 |
+| NFR-12 | Retention | Sales and lines are kept indefinitely; the only data physically deleted is the image binary | §7.1 |
 
-## 4. Fuera de alcance
-No hay clientes, pagos, multimoneda, auditoría `created_at`/`updated_at`, ni mantenimiento de categorías (§1, §2.1, §3, §8).
+## 4. Out of scope
+No customers, payments, multi-currency, `created_at`/`updated_at` auditing, or category maintenance (§1, §2.1, §3, §8).
 
-## 5. Pendientes del modelo que afectan requisitos
-- `sale.sold_by_user_id` y FK-4: pendientes (T-12), §5.
-- Índices de búsqueda y reporte: pendientes (T-13), §6.2.
-- `CHECK` de `price > 0`, `quantity > 0`, rol y nombre no vacío: hoy solo en dominio (T-20), §4.
-- **Posible contradicción:** `spec.md` CA-06.1 dice «una fila por producto», pero §11.1 produce más de una si hubo recategorización. Está pendiente de decisión del propietario.
+## 5. Pending items in the model that affect requirements
+- `sale.sold_by_user_id` and FK-4: pending (T-12), §5.
+- Search and report indexes: pending (T-13), §6.2.
+- `CHECK` constraints for `price > 0`, `quantity > 0`, role and non-empty name: domain-only today (T-20), §4.
+- **Possible contradiction:** `spec.md` CA-06.1 says "one row per product", but §11.1 produces more than one when a product was recategorized. Pending decision by the owner.
